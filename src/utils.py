@@ -41,7 +41,8 @@ def set_config(args, game):
     config['optim']['eps'] = 0.00015
     config["sampler"]["eval_max_trajectories"] = 100
     config["sampler"]["eval_n_envs"] = 100
-    config["sampler"]["eval_max_steps"] = 100*28000  # 28k is just a safe ceiling
+    config["sampler"][
+        "eval_max_steps"] = 100 * 28000  # 28k is just a safe ceiling
     config['sampler']['batch_B'] = args.batch_b
     config['sampler']['batch_T'] = args.batch_t
 

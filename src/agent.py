@@ -2,15 +2,15 @@ import torch
 from rlpyt.agents.dqn.atari.atari_catdqn_agent import AtariCatDqnAgent
 from rlpyt.utils.buffer import buffer_to
 from rlpyt.utils.collections import namedarraytuple
+
 AgentInputs = namedarraytuple("AgentInputs",
-    ["observation", "prev_action", "prev_reward"])
+                              ["observation", "prev_action", "prev_reward"])
 AgentInfo = namedarraytuple("AgentInfo", "p")
 AgentStep = namedarraytuple("AgentStep", ["action", "agent_info"])
 
 
 class SPRAgent(AtariCatDqnAgent):
     """Agent for Categorical DQN algorithm with search."""
-
     def __init__(self, eval=False, **kwargs):
         """Standard init, and set the number of probability atoms (bins)."""
         super().__init__(**kwargs)
@@ -20,12 +20,12 @@ class SPRAgent(AtariCatDqnAgent):
         """Returns Q-values for states/observations (with grad)."""
         if train:
             model_inputs = buffer_to((observation, prev_action, prev_reward),
-                device=self.device)
+                                     device=self.device)
             return self.model(*model_inputs, train=train)
         else:
             prev_action = self.distribution.to_onehot(prev_action)
             model_inputs = buffer_to((observation, prev_action, prev_reward),
-                device=self.device)
+                                     device=self.device)
             return self.model(*model_inputs).cpu()
 
     def initialize(self,
@@ -113,6 +113,9 @@ class SPRActionSelection(torch.nn.Module):
         B will apply across the Batch dimension (same epsilon for all T)."""
         arg_select = torch.argmax(value, dim=-1)
         mask = torch.rand(arg_select.shape, device=value.device) < self.epsilon
-        arg_rand = torch.randint(low=0, high=value.shape[-1], size=(mask.sum(),), device=value.device)
+        arg_rand = torch.randint(low=0,
+                                 high=value.shape[-1],
+                                 size=(mask.sum(), ),
+                                 device=value.device)
         arg_select[mask] = arg_rand
         return arg_select

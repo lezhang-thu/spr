@@ -18,45 +18,44 @@ import wandb
 class SPRCatDqnModel(torch.nn.Module):
     """2D conlutional network feeding into MLP with ``n_atoms`` outputs
     per action, representing a discrete probability distribution of Q-values."""
-
     def __init__(
-            self,
-            image_shape,
-            output_size,
-            n_atoms,
-            dueling,
-            jumps,
-            spr,
-            augmentation,
-            target_augmentation,
-            eval_augmentation,
-            dynamics_blocks,
-            norm_type,
-            noisy_nets,
-            aug_prob,
-            classifier,
-            imagesize,
-            time_offset,
-            local_spr,
-            global_spr,
-            momentum_encoder,
-            shared_encoder,
-            distributional,
-            dqn_hidden_size,
-            momentum_tau,
-            renormalize,
-            q_l1_type,
-            dropout,
-            final_classifier,
-            model_rl,
-            noisy_nets_std,
-            residual_tm,
-            use_maxpool=False,
-            channels=None,  # None uses default.
-            kernel_sizes=None,
-            strides=None,
-            paddings=None,
-            framestack=4,
+        self,
+        image_shape,
+        output_size,
+        n_atoms,
+        dueling,
+        jumps,
+        spr,
+        augmentation,
+        target_augmentation,
+        eval_augmentation,
+        dynamics_blocks,
+        norm_type,
+        noisy_nets,
+        aug_prob,
+        classifier,
+        imagesize,
+        time_offset,
+        local_spr,
+        global_spr,
+        momentum_encoder,
+        shared_encoder,
+        distributional,
+        dqn_hidden_size,
+        momentum_tau,
+        renormalize,
+        q_l1_type,
+        dropout,
+        final_classifier,
+        model_rl,
+        noisy_nets_std,
+        residual_tm,
+        use_maxpool=False,
+        channels=None,  # None uses default.
+        kernel_sizes=None,
+        strides=None,
+        paddings=None,
+        framestack=4,
     ):
         """Instantiates the neural network according to arguments; network defaults
         stored within this method."""
@@ -77,7 +76,8 @@ class SPRCatDqnModel(torch.nn.Module):
         self.uses_augmentation = False
         for aug in augmentation:
             if aug == "affine":
-                transformation = RandomAffine(5, (.14, .14), (.9, 1.1), (-5, 5))
+                transformation = RandomAffine(5, (.14, .14), (.9, 1.1),
+                                              (-5, 5))
                 eval_transformation = nn.Identity()
                 self.uses_augmentation = True
             elif aug == "crop":
@@ -95,7 +95,8 @@ class SPRCatDqnModel(torch.nn.Module):
                 eval_transformation = nn.Identity()
                 self.uses_augmentation = True
             elif aug == "shift":
-                transformation = nn.Sequential(nn.ReplicationPad2d(4), RandomCrop((84, 84)))
+                transformation = nn.Sequential(nn.ReplicationPad2d(4),
+                                               RandomCrop((84, 84)))
                 eval_transformation = nn.Identity()
             elif aug == "intensity":
                 transformation = Intensity(scale=0.05)
@@ -120,10 +121,10 @@ class SPRCatDqnModel(torch.nn.Module):
             dropout=dropout,
         )
 
-        fake_input = torch.zeros(1, f*c, imagesize, imagesize)
+        fake_input = torch.zeros(1, f * c, imagesize, imagesize)
         fake_output = self.conv(fake_input)
         self.hidden_size = fake_output.shape[1]
-        self.pixels = fake_output.shape[-1]*fake_output.shape[-2]
+        self.pixels = fake_output.shape[-1] * fake_output.shape[-2]
         print("Spatial latent size is {}".format(fake_output.shape[1:]))
 
         self.jumps = jumps
@@ -134,21 +135,23 @@ class SPRCatDqnModel(torch.nn.Module):
         self.num_actions = output_size
 
         if dueling:
-            self.head = DQNDistributionalDuelingHeadModel(self.hidden_size,
-                                                          output_size,
-                                                          hidden_size=self.dqn_hidden_size,
-                                                          pixels=self.pixels,
-                                                          noisy=self.noisy,
-                                                          n_atoms=n_atoms,
-                                                          std_init=noisy_nets_std)
+            self.head = DQNDistributionalDuelingHeadModel(
+                self.hidden_size,
+                output_size,
+                hidden_size=self.dqn_hidden_size,
+                pixels=self.pixels,
+                noisy=self.noisy,
+                n_atoms=n_atoms,
+                std_init=noisy_nets_std)
         else:
-            self.head = DQNDistributionalHeadModel(self.hidden_size,
-                                                   output_size,
-                                                   hidden_size=self.dqn_hidden_size,
-                                                   pixels=self.pixels,
-                                                   noisy=self.noisy,
-                                                   n_atoms=n_atoms,
-                                                   std_init=noisy_nets_std)
+            self.head = DQNDistributionalHeadModel(
+                self.hidden_size,
+                output_size,
+                hidden_size=self.dqn_hidden_size,
+                pixels=self.pixels,
+                noisy=self.noisy,
+                n_atoms=n_atoms,
+                std_init=noisy_nets_std)
 
         if self.jumps > 0:
             self.dynamics_model = TransitionModel(channels=self.hidden_size,
@@ -180,105 +183,111 @@ class SPRCatDqnModel(torch.nn.Module):
             if self.local_spr:
                 self.local_final_classifier = nn.Identity()
                 if self.classifier_type == "mlp":
-                    self.local_classifier = nn.Sequential(nn.Linear(self.hidden_size,
-                                                                    self.hidden_size),
-                                                          nn.BatchNorm1d(self.hidden_size),
-                                                          nn.ReLU(),
-                                                          nn.Linear(self.hidden_size,
-                                                                    self.hidden_size))
+                    self.local_classifier = nn.Sequential(
+                        nn.Linear(self.hidden_size, self.hidden_size),
+                        nn.BatchNorm1d(self.hidden_size), nn.ReLU(),
+                        nn.Linear(self.hidden_size, self.hidden_size))
                 elif self.classifier_type == "bilinear":
-                    self.local_classifier = nn.Linear(self.hidden_size, self.hidden_size)
+                    self.local_classifier = nn.Linear(self.hidden_size,
+                                                      self.hidden_size)
                 elif self.classifier_type == "none":
                     self.local_classifier = nn.Identity()
                 if final_classifier == "mlp":
-                    self.local_final_classifier = nn.Sequential(nn.Linear(self.hidden_size, 2*self.hidden_size),
-                                                                nn.BatchNorm1d(2*self.hidden_size),
-                                                                nn.ReLU(),
-                                                                nn.Linear(2*self.hidden_size,
-                                                                    self.hidden_size))
+                    self.local_final_classifier = nn.Sequential(
+                        nn.Linear(self.hidden_size, 2 * self.hidden_size),
+                        nn.BatchNorm1d(2 * self.hidden_size), nn.ReLU(),
+                        nn.Linear(2 * self.hidden_size, self.hidden_size))
                 elif final_classifier == "linear":
-                    self.local_final_classifier = nn.Linear(self.hidden_size, self.hidden_size)
+                    self.local_final_classifier = nn.Linear(
+                        self.hidden_size, self.hidden_size)
                 else:
                     self.local_final_classifier = nn.Identity()
 
                 self.local_target_classifier = self.local_classifier
             else:
-                self.local_classifier = self.local_target_classifier = nn.Identity()
+                self.local_classifier = self.local_target_classifier = nn.Identity(
+                )
             if self.global_spr:
                 self.global_final_classifier = nn.Identity()
                 if self.classifier_type == "mlp":
                     self.global_classifier = nn.Sequential(
-                                                nn.Flatten(-3, -1),
-                                                nn.Linear(self.pixels*self.hidden_size, 512),
-                                                nn.BatchNorm1d(512),
-                                                nn.ReLU(),
-                                                nn.Linear(512, 256)
-                                                )
+                        nn.Flatten(-3, -1),
+                        nn.Linear(self.pixels * self.hidden_size, 512),
+                        nn.BatchNorm1d(512), nn.ReLU(), nn.Linear(512, 256))
                     self.global_target_classifier = self.global_classifier
                     global_spr_size = 256
                 elif self.classifier_type == "q_l1":
-                    self.global_classifier = QL1Head(self.head, dueling=dueling, type=q_l1_type)
+                    self.global_classifier = QL1Head(self.head,
+                                                     dueling=dueling,
+                                                     type=q_l1_type)
                     global_spr_size = self.global_classifier.out_features
                     self.global_target_classifier = self.global_classifier
                 elif self.classifier_type == "q_l2":
-                    self.global_classifier = nn.Sequential(self.head, nn.Flatten(-2, -1))
+                    self.global_classifier = nn.Sequential(
+                        self.head, nn.Flatten(-2, -1))
                     self.global_target_classifier = self.global_classifier
                     global_spr_size = 256
                 elif self.classifier_type == "bilinear":
-                    self.global_classifier = nn.Sequential(nn.Flatten(-3, -1),
-                                                           nn.Linear(self.hidden_size*self.pixels,
-                                                                     self.hidden_size*self.pixels))
+                    self.global_classifier = nn.Sequential(
+                        nn.Flatten(-3, -1),
+                        nn.Linear(self.hidden_size * self.pixels,
+                                  self.hidden_size * self.pixels))
                     self.global_target_classifier = nn.Flatten(-3, -1)
                 elif self.classifier_type == "none":
                     self.global_classifier = nn.Flatten(-3, -1)
                     self.global_target_classifier = nn.Flatten(-3, -1)
 
-                    global_spr_size = self.hidden_size*self.pixels
+                    global_spr_size = self.hidden_size * self.pixels
                 if final_classifier == "mlp":
                     self.global_final_classifier = nn.Sequential(
-                        nn.Linear(global_spr_size, global_spr_size*2),
-                        nn.BatchNorm1d(global_spr_size*2),
-                        nn.ReLU(),
-                        nn.Linear(global_spr_size*2, global_spr_size)
-                    )
+                        nn.Linear(global_spr_size, global_spr_size * 2),
+                        nn.BatchNorm1d(global_spr_size * 2), nn.ReLU(),
+                        nn.Linear(global_spr_size * 2, global_spr_size))
                 elif final_classifier == "linear":
                     self.global_final_classifier = nn.Sequential(
-                        nn.Linear(global_spr_size, global_spr_size),
-                    )
+                        nn.Linear(global_spr_size, global_spr_size), )
                 elif final_classifier == "none":
                     self.global_final_classifier = nn.Identity()
             else:
-                self.global_classifier = self.global_target_classifier = nn.Identity()
+                self.global_classifier = self.global_target_classifier = nn.Identity(
+                )
 
             if self.momentum_encoder:
                 self.target_encoder = copy.deepcopy(self.conv)
-                self.global_target_classifier = copy.deepcopy(self.global_target_classifier)
-                self.local_target_classifier = copy.deepcopy(self.local_target_classifier)
-                for param in (list(self.target_encoder.parameters())
-                            + list(self.global_target_classifier.parameters())
-                            + list(self.local_target_classifier.parameters())):
+                self.global_target_classifier = copy.deepcopy(
+                    self.global_target_classifier)
+                self.local_target_classifier = copy.deepcopy(
+                    self.local_target_classifier)
+                for param in (
+                        list(self.target_encoder.parameters()) +
+                        list(self.global_target_classifier.parameters()) +
+                        list(self.local_target_classifier.parameters())):
                     param.requires_grad = False
 
             elif not self.shared_encoder:
                 # Use a separate target encoder on the last frame only.
-                self.global_target_classifier = copy.deepcopy(self.global_target_classifier)
-                self.local_target_classifier = copy.deepcopy(self.local_target_classifier)
+                self.global_target_classifier = copy.deepcopy(
+                    self.global_target_classifier)
+                self.local_target_classifier = copy.deepcopy(
+                    self.local_target_classifier)
                 if self.stack_actions:
                     input_size = c - 1
                 else:
                     input_size = c
-                self.target_encoder = Conv2dModel(in_channels=input_size,
-                                                  channels=[32, 64, 64],
-                                                  kernel_sizes=[8, 4, 3],
-                                                  strides=[4, 2, 1],
-                                                  paddings=[0, 0, 0],
-                                                  use_maxpool=False,
-                                                  )
+                self.target_encoder = Conv2dModel(
+                    in_channels=input_size,
+                    channels=[32, 64, 64],
+                    kernel_sizes=[8, 4, 3],
+                    strides=[4, 2, 1],
+                    paddings=[0, 0, 0],
+                    use_maxpool=False,
+                )
 
             elif self.shared_encoder:
                 self.target_encoder = self.conv
 
-        print("Initialized model with {} parameters".format(count_parameters(self)))
+        print("Initialized model with {} parameters".format(
+            count_parameters(self)))
 
     def set_sampling(self, sampling):
         if self.noisy:
@@ -297,10 +306,12 @@ class SPRCatDqnModel(torch.nn.Module):
         global_latents = self.global_final_classifier(global_latents)
         with torch.no_grad() if self.momentum_encoder else dummy_context_mgr():
             global_targets = self.global_target_classifier(target_latents)
-        targets = global_targets.view(-1, observation.shape[1],
-                                             self.jumps+1, global_targets.shape[-1]).transpose(1, 2)
-        latents = global_latents.view(-1, observation.shape[1],
-                                             self.jumps+1, global_latents.shape[-1]).transpose(1, 2)
+        targets = global_targets.view(-1, observation.shape[1], self.jumps + 1,
+                                      global_targets.shape[-1]).transpose(
+                                          1, 2)
+        latents = global_latents.view(-1, observation.shape[1], self.jumps + 1,
+                                      global_latents.shape[-1]).transpose(
+                                          1, 2)
         loss = self.spr_loss(latents, targets)
         return loss
 
@@ -312,23 +323,27 @@ class SPRCatDqnModel(torch.nn.Module):
         with torch.no_grad() if self.momentum_encoder else dummy_context_mgr():
             local_targets = self.local_target_classifier(local_target_latents)
 
-        local_latents = local_latents.view(-1,
-                                           observation.shape[1],
-                                           self.jumps+1,
-                                           local_latents.shape[-1]).transpose(1, 2)
-        local_targets = local_targets.view(-1,
-                                           observation.shape[1],
-                                           self.jumps+1,
-                                           local_targets.shape[-1]).transpose(1, 2)
+        local_latents = local_latents.view(-1, observation.shape[1],
+                                           self.jumps + 1,
+                                           local_latents.shape[-1]).transpose(
+                                               1, 2)
+        local_targets = local_targets.view(-1, observation.shape[1],
+                                           self.jumps + 1,
+                                           local_targets.shape[-1]).transpose(
+                                               1, 2)
         local_loss = self.spr_loss(local_latents, local_targets)
         return local_loss
 
     def do_spr_loss(self, pred_latents, observation):
         pred_latents = torch.stack(pred_latents, 1)
-        latents = pred_latents[:observation.shape[1]].flatten(0, 1)  # batch*jumps, *
+        latents = pred_latents[:observation.shape[1]].flatten(
+            0, 1)  # batch*jumps, *
         neg_latents = pred_latents[observation.shape[1]:].flatten(0, 1)
         latents = torch.cat([latents, neg_latents], 0)
-        target_images = observation[self.time_offset:self.jumps + self.time_offset+1].transpose(0, 1).flatten(2, 3)
+        target_images = observation[self.time_offset:self.jumps +
+                                    self.time_offset + 1].transpose(0,
+                                                                    1).flatten(
+                                                                        2, 3)
         target_images = self.transform(target_images, True)
 
         if not self.momentum_encoder and not self.shared_encoder:
@@ -339,20 +354,22 @@ class SPRCatDqnModel(torch.nn.Module):
                 target_latents = renormalize(target_latents, -3)
 
         if self.local_spr:
-            local_loss = self.local_spr_loss(latents, target_latents, observation)
+            local_loss = self.local_spr_loss(latents, target_latents,
+                                             observation)
         else:
             local_loss = 0
         if self.global_spr:
-            global_loss = self.global_spr_loss(latents, target_latents, observation)
+            global_loss = self.global_spr_loss(latents, target_latents,
+                                               observation)
         else:
             global_loss = 0
 
-        spr_loss = (global_loss + local_loss)/self.num_sprs
-        spr_loss = spr_loss.view(-1, observation.shape[1]) # split to batch, jumps
+        spr_loss = (global_loss + local_loss) / self.num_sprs
+        spr_loss = spr_loss.view(-1,
+                                 observation.shape[1])  # split to batch, jumps
 
         if self.momentum_encoder:
-            update_state_dict(self.target_encoder,
-                              self.conv.state_dict(),
+            update_state_dict(self.target_encoder, self.conv.state_dict(),
                               self.momentum_tau)
             if self.classifier_type != "bilinear":
                 # q_l1 is also bilinear for local
@@ -372,13 +389,16 @@ class SPRCatDqnModel(torch.nn.Module):
                 image = transform(image)
         else:
             for transform, eval_transform in zip(transforms, eval_transforms):
-                image = maybe_transform(image, transform,
-                                        eval_transform, p=self.aug_prob)
+                image = maybe_transform(image,
+                                        transform,
+                                        eval_transform,
+                                        p=self.aug_prob)
         return image
 
     @torch.no_grad()
     def transform(self, images, augment=False):
-        images = images.float()/255. if images.dtype == torch.uint8 else images
+        images = images.float(
+        ) / 255. if images.dtype == torch.uint8 else images
         flat_images = images.reshape(-1, *images.shape[-3:])
         if augment:
             processed_images = self.apply_transforms(self.transforms,
@@ -386,8 +406,7 @@ class SPRCatDqnModel(torch.nn.Module):
                                                      flat_images)
         else:
             processed_images = self.apply_transforms(self.eval_transforms,
-                                                     None,
-                                                     flat_images)
+                                                     None, flat_images)
         processed_images = processed_images.view(*images.shape[:-3],
                                                  *processed_images.shape[1:])
         return processed_images
@@ -400,16 +419,13 @@ class SPRCatDqnModel(torch.nn.Module):
         # Infer (presence of) leading dimensions: [T,B], [B], or [].
         lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
-        conv_out = self.conv(img.view(T * B, *img_shape))  # Fold if T dimension.
+        conv_out = self.conv(img.view(T * B,
+                                      *img_shape))  # Fold if T dimension.
         if self.renormalize:
             conv_out = renormalize(conv_out, -3)
         return conv_out
 
-    def head_forward(self,
-                     conv_out,
-                     prev_action,
-                     prev_reward,
-                     logits=False):
+    def head_forward(self, conv_out, prev_action, prev_reward, logits=False):
         lead_dim, T, B, img_shape = infer_leading_dims(conv_out, 3)
         p = self.head(conv_out)
 
@@ -425,9 +441,12 @@ class SPRCatDqnModel(torch.nn.Module):
         p = restore_leading_dims(p, lead_dim, T, B)
         return p
 
-    def forward(self, observation,
-                prev_action, prev_reward,
-                train=False, eval=False):
+    def forward(self,
+                observation,
+                prev_action,
+                prev_reward,
+                train=False,
+                eval=False):
         """
         For convenience reasons with DistributedDataParallel the forward method
         has been split into two cases, one for training and one for eval.
@@ -438,16 +457,17 @@ class SPRCatDqnModel(torch.nn.Module):
             pred_latents = []
             input_obs = observation[0].flatten(1, 2)
             input_obs = self.transform(input_obs, augment=True)
-            latent = self.stem_forward(input_obs,
-                                       prev_action[0],
+            latent = self.stem_forward(input_obs, prev_action[0],
                                        prev_reward[0])
-            log_pred_ps.append(self.head_forward(latent,
-                                                 prev_action[0],
-                                                 prev_reward[0],
-                                                 logits=True))
+            log_pred_ps.append(
+                self.head_forward(latent,
+                                  prev_action[0],
+                                  prev_reward[0],
+                                  logits=True))
             pred_latents.append(latent)
             if self.jumps > 0:
-                pred_rew = self.dynamics_model.reward_predictor(pred_latents[0])
+                pred_rew = self.dynamics_model.reward_predictor(
+                    pred_latents[0])
                 pred_reward.append(F.log_softmax(pred_rew, -1))
 
                 for j in range(1, self.jumps + 1):
@@ -458,30 +478,35 @@ class SPRCatDqnModel(torch.nn.Module):
 
             if self.model_rl > 0:
                 for i in range(1, len(pred_latents)):
-                    log_pred_ps.append(self.head_forward(pred_latents[i],
-                                                         prev_action[i],
-                                                         prev_reward[i],
-                                                         logits=True))
+                    log_pred_ps.append(
+                        self.head_forward(pred_latents[i],
+                                          prev_action[i],
+                                          prev_reward[i],
+                                          logits=True))
 
             if self.use_spr:
                 spr_loss = self.do_spr_loss(pred_latents, observation)
             else:
-                spr_loss = torch.zeros((self.jumps + 1, observation.shape[1]), device=latent.device)
+                spr_loss = torch.zeros((self.jumps + 1, observation.shape[1]),
+                                       device=latent.device)
 
             return log_pred_ps, pred_reward, spr_loss
 
         else:
             aug_factor = self.target_augmentation if not eval else self.eval_augmentation
             observation = observation.flatten(-4, -3)
-            stacked_observation = observation.unsqueeze(1).repeat(1, max(1, aug_factor), 1, 1, 1)
-            stacked_observation = stacked_observation.view(-1, *observation.shape[1:])
+            stacked_observation = observation.unsqueeze(1).repeat(
+                1, max(1, aug_factor), 1, 1, 1)
+            stacked_observation = stacked_observation.view(
+                -1, *observation.shape[1:])
 
             img = self.transform(stacked_observation, aug_factor)
 
             # Infer (presence of) leading dimensions: [T,B], [B], or [].
             lead_dim, T, B, img_shape = infer_leading_dims(img, 3)
 
-            conv_out = self.conv(img.view(T * B, *img_shape))  # Fold if T dimension.
+            conv_out = self.conv(img.view(T * B,
+                                          *img_shape))  # Fold if T dimension.
             if self.renormalize:
                 conv_out = renormalize(conv_out, -3)
             p = self.head(conv_out)
@@ -491,8 +516,7 @@ class SPRCatDqnModel(torch.nn.Module):
             else:
                 p = p.squeeze(-1)
 
-            p = p.view(observation.shape[0],
-                       max(1, aug_factor),
+            p = p.view(observation.shape[0], max(1, aug_factor),
                        *p.shape[1:]).mean(1)
 
             # Restore leading dimensions: [T,B], [B], or [], as input.
@@ -526,13 +550,15 @@ class MLPHead(torch.nn.Module):
             linear = nn.Linear
         self.noisy = noisy
         if hidden_size <= 0:
-            hidden_size = input_channels*pixels
-        self.linears = [linear(input_channels*pixels, hidden_size),
-                        linear(hidden_size, output_size)]
-        layers = [nn.Flatten(-3, -1),
-                  self.linears[0],
-                  nn.ReLU(),
-                  self.linears[1]]
+            hidden_size = input_channels * pixels
+        self.linears = [
+            linear(input_channels * pixels, hidden_size),
+            linear(hidden_size, output_size)
+        ]
+        layers = [
+            nn.Flatten(-3, -1), self.linears[0],
+            nn.ReLU(), self.linears[1]
+        ]
         self.network = nn.Sequential(*layers)
         if not noisy:
             self.network.apply(weights_init)
@@ -562,16 +588,21 @@ class DQNDistributionalHeadModel(torch.nn.Module):
         super().__init__()
         if noisy:
             linear = NoisyLinear
-            self.linears = [linear(input_channels*pixels, hidden_size, std_init=std_init),
-                            linear(hidden_size, output_size * n_atoms, std_init=std_init)]
+            self.linears = [
+                linear(input_channels * pixels, hidden_size,
+                       std_init=std_init),
+                linear(hidden_size, output_size * n_atoms, std_init=std_init)
+            ]
         else:
             linear = nn.Linear
-            self.linears = [linear(input_channels*pixels, hidden_size),
-                            linear(hidden_size, output_size * n_atoms)]
-        layers = [nn.Flatten(-3, -1),
-                  self.linears[0],
-                  nn.ReLU(),
-                  self.linears[1]]
+            self.linears = [
+                linear(input_channels * pixels, hidden_size),
+                linear(hidden_size, output_size * n_atoms)
+            ]
+        layers = [
+            nn.Flatten(-3, -1), self.linears[0],
+            nn.ReLU(), self.linears[1]
+        ]
         self.network = nn.Sequential(*layers)
         if not noisy:
             self.network.apply(weights_init)
@@ -592,40 +623,48 @@ class DQNDistributionalHeadModel(torch.nn.Module):
 
 class DQNDistributionalDuelingHeadModel(torch.nn.Module):
     """An MLP head with optional noisy layers which reshapes output to [B, output_size, n_atoms]."""
-
     def __init__(self,
                  input_channels,
                  output_size,
                  pixels=30,
                  n_atoms=51,
                  hidden_size=256,
-                 grad_scale=2 ** (-1 / 2),
+                 grad_scale=2**(-1 / 2),
                  noisy=0,
                  std_init=0.1):
         super().__init__()
         if noisy:
-            self.linears = [NoisyLinear(pixels * input_channels, hidden_size, std_init=std_init),
-                            NoisyLinear(hidden_size, output_size * n_atoms, std_init=std_init),
-                            NoisyLinear(pixels * input_channels, hidden_size, std_init=std_init),
-                            NoisyLinear(hidden_size, n_atoms, std_init=std_init)
-                            ]
+            self.linears = [
+                NoisyLinear(pixels * input_channels,
+                            hidden_size,
+                            std_init=std_init),
+                NoisyLinear(hidden_size,
+                            output_size * n_atoms,
+                            std_init=std_init),
+                NoisyLinear(pixels * input_channels,
+                            hidden_size,
+                            std_init=std_init),
+                NoisyLinear(hidden_size, n_atoms, std_init=std_init)
+            ]
         else:
-            self.linears = [nn.Linear(pixels * input_channels, hidden_size),
-                            nn.Linear(hidden_size, output_size * n_atoms),
-                            nn.Linear(pixels * input_channels, hidden_size),
-                            nn.Linear(hidden_size, n_atoms)
-                            ]
-        self.advantage_layers = [nn.Flatten(-3, -1),
-                                 self.linears[0],
-                                 nn.ReLU(),
-                                 self.linears[1]]
-        self.value_layers = [nn.Flatten(-3, -1),
-                             self.linears[2],
-                             nn.ReLU(),
-                             self.linears[3]]
+            self.linears = [
+                nn.Linear(pixels * input_channels, hidden_size),
+                nn.Linear(hidden_size, output_size * n_atoms),
+                nn.Linear(pixels * input_channels, hidden_size),
+                nn.Linear(hidden_size, n_atoms)
+            ]
+        self.advantage_layers = [
+            nn.Flatten(-3, -1), self.linears[0],
+            nn.ReLU(), self.linears[1]
+        ]
+        self.value_layers = [
+            nn.Flatten(-3, -1), self.linears[2],
+            nn.ReLU(), self.linears[3]
+        ]
         self.advantage_hidden = nn.Sequential(*self.advantage_layers[:3])
         self.advantage_out = self.advantage_layers[3]
-        self.advantage_bias = torch.nn.Parameter(torch.zeros(n_atoms), requires_grad=True)
+        self.advantage_bias = torch.nn.Parameter(torch.zeros(n_atoms),
+                                                 requires_grad=True)
         self.value = nn.Sequential(*self.value_layers)
         self.network = self.advantage_hidden
         self._grad_scale = grad_scale
@@ -706,10 +745,14 @@ class NoisyLinear(nn.Module):
         self.sampling = True
         self.noise_override = None
         self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
-        self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
-        self.register_buffer('weight_epsilon', torch.empty(out_features, in_features))
-        self.bias_mu = nn.Parameter(torch.empty(out_features), requires_grad=bias)
-        self.bias_sigma = nn.Parameter(torch.empty(out_features), requires_grad=bias)
+        self.weight_sigma = nn.Parameter(torch.empty(out_features,
+                                                     in_features))
+        self.register_buffer('weight_epsilon',
+                             torch.empty(out_features, in_features))
+        self.bias_mu = nn.Parameter(torch.empty(out_features),
+                                    requires_grad=bias)
+        self.bias_sigma = nn.Parameter(torch.empty(out_features),
+                                       requires_grad=bias)
         self.register_buffer('bias_epsilon', torch.empty(out_features))
         self.reset_parameters()
         self.reset_noise()
@@ -722,7 +765,8 @@ class NoisyLinear(nn.Module):
             self.bias_mu.fill_(0)
             self.bias_sigma.fill_(0)
         else:
-            self.bias_sigma.data.fill_(self.std_init / np.sqrt(self.out_features))
+            self.bias_sigma.data.fill_(self.std_init /
+                                       np.sqrt(self.out_features))
             self.bias_mu.data.uniform_(-mu_range, mu_range)
 
     def _scale_noise(self, size):
@@ -746,8 +790,10 @@ class NoisyLinear(nn.Module):
         else:
             use_noise = self.noise_override
         if use_noise:
-            return F.linear(input, self.weight_mu + self.weight_sigma * self.weight_epsilon,
-                            self.bias_mu + self.bias_sigma * self.bias_epsilon)
+            return F.linear(
+                input,
+                self.weight_mu + self.weight_sigma * self.weight_epsilon,
+                self.bias_mu + self.bias_sigma * self.bias_epsilon)
         else:
             return F.linear(input, self.weight_mu, self.bias_mu)
 
@@ -781,23 +827,23 @@ class Conv2dModel(torch.nn.Module):
     downsampling for strides > 1.  Requires number of input channels, but
     not input shape.  Uses ``torch.nn.Conv2d``.
     """
-
     def __init__(
-            self,
-            in_channels,
-            channels,
-            kernel_sizes,
-            strides,
-            paddings=None,
-            nonlinearity=torch.nn.ReLU,  # Module, not Functional.
-            use_maxpool=False,  # if True: convs use stride 1, maxpool downsample.
-            head_sizes=None,  # Put an MLP head on top.
-            dropout=0.,
-            ):
+        self,
+        in_channels,
+        channels,
+        kernel_sizes,
+        strides,
+        paddings=None,
+        nonlinearity=torch.nn.ReLU,  # Module, not Functional.
+        use_maxpool=False,  # if True: convs use stride 1, maxpool downsample.
+        head_sizes=None,  # Put an MLP head on top.
+        dropout=0.,
+    ):
         super().__init__()
         if paddings is None:
             paddings = [0 for _ in range(len(channels))]
-        assert len(channels) == len(kernel_sizes) == len(strides) == len(paddings)
+        assert len(channels) == len(kernel_sizes) == len(strides) == len(
+            paddings)
         in_channels = [in_channels] + channels[:-1]
         ones = [1 for _ in range(len(strides))]
         if use_maxpool:
@@ -805,9 +851,14 @@ class Conv2dModel(torch.nn.Module):
             strides = ones
         else:
             maxp_strides = ones
-        conv_layers = [torch.nn.Conv2d(in_channels=ic, out_channels=oc,
-            kernel_size=k, stride=s, padding=p) for (ic, oc, k, s, p) in
-            zip(in_channels, channels, kernel_sizes, strides, paddings)]
+        conv_layers = [
+            torch.nn.Conv2d(in_channels=ic,
+                            out_channels=oc,
+                            kernel_size=k,
+                            stride=s,
+                            padding=p) for (ic, oc, k, s, p) in
+            zip(in_channels, channels, kernel_sizes, strides, paddings)
+        ]
         sequence = list()
         for conv_layer, maxp_stride in zip(conv_layers, maxp_strides):
             sequence.extend([conv_layer, nonlinearity()])
@@ -842,10 +893,7 @@ def init_normalization(channels, type="bn", affine=True, one_d=False):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 norm_type="bn"):
+    def __init__(self, in_channels, out_channels, norm_type="bn"):
         super().__init__()
         self.block = nn.Sequential(
             Conv2dSame(in_channels, out_channels, 3),
@@ -875,9 +923,12 @@ class Conv2dSame(torch.nn.Module):
         ka = kernel_size // 2
         kb = ka - 1 if kernel_size % 2 == 0 else ka
         self.net = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels, out_channels, kernel_size, bias=bias,
-                            stride=stride, padding=ka)
-        )
+            torch.nn.Conv2d(in_channels,
+                            out_channels,
+                            kernel_size,
+                            bias=bias,
+                            stride=stride,
+                            padding=ka))
 
     def forward(self, x):
         return self.net(x)
@@ -886,13 +937,16 @@ class Conv2dSame(torch.nn.Module):
 def to_categorical(value, limit=300):
     value = value.float()  # Avoid any fp16 shenanigans
     value = value.clamp(-limit, limit)
-    distribution = torch.zeros(value.shape[0], (limit*2+1), device=value.device)
+    distribution = torch.zeros(value.shape[0], (limit * 2 + 1),
+                               device=value.device)
     lower = value.floor().long() + limit
     upper = value.ceil().long() + limit
     upper_weight = value % 1
     lower_weight = 1 - upper_weight
-    distribution.scatter_add_(-1, lower.unsqueeze(-1), lower_weight.unsqueeze(-1))
-    distribution.scatter_add_(-1, upper.unsqueeze(-1), upper_weight.unsqueeze(-1))
+    distribution.scatter_add_(-1, lower.unsqueeze(-1),
+                              lower_weight.unsqueeze(-1))
+    distribution.scatter_add_(-1, upper.unsqueeze(-1),
+                              upper_weight.unsqueeze(-1))
     return distribution
 
 
@@ -901,7 +955,10 @@ def from_categorical(distribution, limit=300, logits=True):
     if logits:
         distribution = torch.softmax(distribution, -1)
     num_atoms = distribution.shape[-1]
-    weights = torch.linspace(-limit, limit, num_atoms, device=distribution.device).float()
+    weights = torch.linspace(-limit,
+                             limit,
+                             num_atoms,
+                             device=distribution.device).float()
     return distribution @ weights
 
 
@@ -924,16 +981,16 @@ class TransitionModel(nn.Module):
         self.args = args
         self.renormalize = renormalize
         self.residual = residual
-        layers = [Conv2dSame(channels+num_actions, hidden_size, 3),
-                  nn.ReLU(),
-                  init_normalization(hidden_size, norm_type)]
+        layers = [
+            Conv2dSame(channels + num_actions, hidden_size, 3),
+            nn.ReLU(),
+            init_normalization(hidden_size, norm_type)
+        ]
         for _ in range(blocks):
-            layers.append(ResidualBlock(hidden_size,
-                                        hidden_size,
-                                        norm_type))
+            layers.append(ResidualBlock(hidden_size, hidden_size, norm_type))
         layers.extend([Conv2dSame(hidden_size, channels, 3)])
 
-        self.action_embedding = nn.Embedding(num_actions, pixels*action_dim)
+        self.action_embedding = nn.Embedding(num_actions, pixels * action_dim)
 
         self.network = nn.Sequential(*layers)
         self.reward_predictor = RewardPredictor(channels,
@@ -970,13 +1027,15 @@ class RewardPredictor(nn.Module):
                  norm_type="bn"):
         super().__init__()
         self.hidden_size = hidden_size
-        layers = [nn.Conv2d(input_channels, hidden_size, kernel_size=1, stride=1),
-                  nn.ReLU(),
-                  init_normalization(hidden_size, norm_type),
-                  nn.Flatten(-3, -1),
-                  nn.Linear(pixels*hidden_size, 256),
-                  nn.ReLU(),
-                  nn.Linear(256, limit*2 + 1)]
+        layers = [
+            nn.Conv2d(input_channels, hidden_size, kernel_size=1, stride=1),
+            nn.ReLU(),
+            init_normalization(hidden_size, norm_type),
+            nn.Flatten(-3, -1),
+            nn.Linear(pixels * hidden_size, 256),
+            nn.ReLU(),
+            nn.Linear(256, limit * 2 + 1)
+        ]
         self.network = nn.Sequential(*layers)
         self.train()
 
@@ -990,6 +1049,6 @@ def renormalize(tensor, first_dim=1):
     flat_tensor = tensor.view(*tensor.shape[:first_dim], -1)
     max = torch.max(flat_tensor, first_dim, keepdim=True).values
     min = torch.min(flat_tensor, first_dim, keepdim=True).values
-    flat_tensor = (flat_tensor - min)/(max - min)
+    flat_tensor = (flat_tensor - min) / (max - min)
 
     return flat_tensor.view(*tensor.shape)

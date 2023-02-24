@@ -13,32 +13,39 @@ from rlpyt.utils.misc import extract_sequences
 import traceback
 
 PrioritizedSamples = namedarraytuple("PrioritizedSamples",
-                                  ["samples", "priorities"])
-SamplesToBuffer = namedarraytuple("SamplesToBuffer",
-                                  ["observation", "action", "reward", "done", "policy_probs", "value"])
-SamplesFromReplayExt = namedarraytuple("SamplesFromReplayPriExt",
-                                       SamplesFromReplay._fields + ("values", "age"))
-SamplesFromReplayPriExt = namedarraytuple("SamplesFromReplayPriExt",
-                                       SamplesFromReplayPri._fields + ("values", "age"))
+                                     ["samples", "priorities"])
+SamplesToBuffer = namedarraytuple(
+    "SamplesToBuffer",
+    ["observation", "action", "reward", "done", "policy_probs", "value"])
+SamplesFromReplayExt = namedarraytuple(
+    "SamplesFromReplayPriExt", SamplesFromReplay._fields + ("values", "age"))
+SamplesFromReplayPriExt = namedarraytuple(
+    "SamplesFromReplayPriExt",
+    SamplesFromReplayPri._fields + ("values", "age"))
 EPS = 1e-6
 
 
-def samples_to_buffer(observation, action, reward, done, policy_probs, value, priorities=None):
-    samples = SamplesToBuffer(
-        observation=observation,
-        action=action,
-        reward=reward,
-        done=done,
-        policy_probs=policy_probs,
-        value=value
-        )
+def samples_to_buffer(observation,
+                      action,
+                      reward,
+                      done,
+                      policy_probs,
+                      value,
+                      priorities=None):
+    samples = SamplesToBuffer(observation=observation,
+                              action=action,
+                              reward=reward,
+                              done=done,
+                              policy_probs=policy_probs,
+                              value=value)
     if priorities is not None:
-        return PrioritizedSamples(samples=samples,
-                                  priorities=priorities)
+        return PrioritizedSamples(samples=samples, priorities=priorities)
     else:
         return samples
 
-class AsyncUniformSequenceReplayFrameBufferExtended(AsyncUniformSequenceReplayFrameBuffer):
+
+class AsyncUniformSequenceReplayFrameBufferExtended(
+        AsyncUniformSequenceReplayFrameBuffer):
     """
     Extends AsyncPrioritizedSequenceReplayFrameBuffer to return policy_logits and values too during sampling.
     """
@@ -62,9 +69,13 @@ class AsyncUniformSequenceReplayFrameBufferExtended(AsyncUniformSequenceReplayFr
                     print("Buffer T:", self.T, flush=True)
 
             elapsed_iters = self.t + self.T - T_idxs % self.T
-            elapsed_samples = self.B*(elapsed_iters)
-            values = torch.from_numpy(extract_sequences(self.samples.value, T_idxs, B_idxs, self.batch_T+self.n_step_return+1))
-            batch = SamplesFromReplayExt(*batch, values=values, age=elapsed_samples)
+            elapsed_samples = self.B * (elapsed_iters)
+            values = torch.from_numpy(
+                extract_sequences(self.samples.value, T_idxs, B_idxs,
+                                  self.batch_T + self.n_step_return + 1))
+            batch = SamplesFromReplayExt(*batch,
+                                         values=values,
+                                         age=elapsed_samples)
             if self.batch_T > 1:
                 batch = self.sanitize_batch(batch)
             return batch
@@ -74,15 +85,16 @@ class AsyncUniformSequenceReplayFrameBufferExtended(AsyncUniformSequenceReplayFr
         for i, (has_done, ind) in enumerate(zip(has_dones, inds)):
             if not has_done:
                 continue
-            batch.all_observation[ind+1:, i] = batch.all_observation[ind, i]
-            batch.all_reward[ind+1:, i] = 0
-            batch.return_[ind+1:, i] = 0
-            batch.done_n[ind+1:, i] = True
-            batch.values[ind+1:, i] = 0
+            batch.all_observation[ind + 1:, i] = batch.all_observation[ind, i]
+            batch.all_reward[ind + 1:, i] = 0
+            batch.return_[ind + 1:, i] = 0
+            batch.done_n[ind + 1:, i] = True
+            batch.values[ind + 1:, i] = 0
         return batch
 
 
-class AsyncPrioritizedSequenceReplayFrameBufferExtended(AsyncPrioritizedSequenceReplayFrameBuffer):
+class AsyncPrioritizedSequenceReplayFrameBufferExtended(
+        AsyncPrioritizedSequenceReplayFrameBuffer):
     """
     Extends AsyncPrioritizedSequenceReplayFrameBuffer to return policy_logits and values too during sampling.
     """
@@ -107,13 +119,15 @@ class AsyncPrioritizedSequenceReplayFrameBufferExtended(AsyncPrioritizedSequence
                     print("Batch_T:", self.batch_T, flush=True)
                     print("Buffer T:", self.T, flush=True)
 
-            is_weights = (1. / (priorities + 1e-5)) ** self.beta
+            is_weights = (1. / (priorities + 1e-5))**self.beta
             is_weights /= max(is_weights)  # Normalize.
             is_weights = torchify_buffer(is_weights).float()
 
             elapsed_iters = self.t + self.T - T_idxs % self.T
-            elapsed_samples = self.B*(elapsed_iters)
-            values = torch.from_numpy(extract_sequences(self.samples.value, T_idxs, B_idxs, self.batch_T+self.n_step_return+1))
+            elapsed_samples = self.B * (elapsed_iters)
+            values = torch.from_numpy(
+                extract_sequences(self.samples.value, T_idxs, B_idxs,
+                                  self.batch_T + self.n_step_return + 1))
             batch = SamplesFromReplayPriExt(*batch,
                                             values=values,
                                             is_weights=is_weights,
@@ -127,9 +141,9 @@ class AsyncPrioritizedSequenceReplayFrameBufferExtended(AsyncPrioritizedSequence
         for i, (has_done, ind) in enumerate(zip(has_dones, inds)):
             if not has_done:
                 continue
-            batch.all_observation[ind+1:, i] = batch.all_observation[ind, i]
-            batch.all_reward[ind+1:, i] = 0
-            batch.return_[ind+1:, i] = 0
-            batch.done_n[ind+1:, i] = True
-            batch.values[ind+1:, i] = 0
+            batch.all_observation[ind + 1:, i] = batch.all_observation[ind, i]
+            batch.all_reward[ind + 1:, i] = 0
+            batch.return_[ind + 1:, i] = 0
+            batch.done_n[ind + 1:, i] = True
+            batch.values[ind + 1:, i] = 0
         return batch
