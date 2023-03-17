@@ -223,7 +223,7 @@ class SPRCategoricalDQN(CategoricalDQN):
         # Make 2-D tensor of contracted z_domain for each data point,
         # with zeros where next value should not be added.
         next_z = z * (self.discount**self.n_step_return)  # [P']
-        next_z = torch.ger(1 - samples.done_n[index].float(), next_z)  # [B,P']
+        next_z = torch.outer(1 - samples.done_n[index].float(), next_z)  # [B,P']
         ret = samples.return_[index].unsqueeze(1)  # [B,1]
         next_z = torch.clamp(ret + next_z, self.V_min, self.V_max)  # [B,P']
 
